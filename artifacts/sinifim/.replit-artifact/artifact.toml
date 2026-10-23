@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Sınıfım"
+description = "Okul ve kurs arkadaşlarını yeniden buluşturan sosyal arşiv. Kullanıcılar kurumlarını ve mezuniyet dönemlerini keşfeder, sınıflarına katılır, arkadaşlarıyla güvenli biçimde içerik ve anı paylaşır."
+version = "1.0.0"
+id = "artifacts/sinifim"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25929
+
+[services.development]
+run = "pnpm --filter @workspace/sinifim run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sinifim", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sinifim/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25929"
+BASE_PATH = "/"

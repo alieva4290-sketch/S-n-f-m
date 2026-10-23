@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="44" viewBox="0 0 180 44" fill="none">
+  <rect x="1" y="5" width="34" height="34" stroke="#2259D4" stroke-width="1.4"/>
+  <path d="M8 14.5c5.4-.9 9.2.1 10 1.7v15c-1.1-1.5-4.6-2.2-10-1.3v-15.4Z" stroke="#2259D4" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M28 14.5c-5.4-.9-9.2.1-10 1.7v15c1.1-1.5 4.6-2.2 10-1.3v-15.4Z" stroke="#2259D4" stroke-width="1.5" stroke-linejoin="round"/>
+  <text x="45" y="31" fill="#22252B" font-family="Georgia,serif" font-size="27" font-weight="700" letter-spacing="-1.2">sınıfım</text>
+  <circle cx="148" cy="27" r="2.5" fill="#2259D4"/>
+</svg>

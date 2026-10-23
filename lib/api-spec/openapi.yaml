@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Sınıfım okul, sınıf ve eski arkadaş toplulukları API'si
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: community
+    description: Kurumlar, sınıflar ve sınıf akışı
+  - name: profile
+    description: Kullanıcı profili ve arkadaş arama
 paths:
   /healthz:
     get:
@@ -24,6 +28,308 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [community]
+      summary: Kullanıcının sınıflarını ve son hareketleri getir
+      responses:
+        "200":
+          description: Ana sayfa özeti
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+        "401":
+          description: Giriş gerekli
+  /institutions:
+    get:
+      operationId: getInstitutions
+      tags: [community]
+      summary: Eğitim kurumlarını ara
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [ilkokul, ortaokul, lise, universite, dershane, kurs, diger]
+      responses:
+        "200":
+          description: Kurum listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Institution"
+  /institutions/{institutionId}/classes:
+    get:
+      operationId: getInstitutionClasses
+      tags: [community]
+      summary: Kurumun sınıf topluluklarını listele
+      parameters:
+        - in: path
+          name: institutionId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Sınıf listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassGroup"
+        "404":
+          description: Kurum bulunamadı
+  /classes:
+    post:
+      operationId: createClass
+      tags: [community]
+      summary: Yeni sınıf topluluğu oluştur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassGroupInput"
+      responses:
+        "201":
+          description: Oluşturulan sınıf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassDetail"
+        "400":
+          description: Geçersiz sınıf bilgisi
+        "401":
+          description: Giriş gerekli
+  /classes/{classId}:
+    get:
+      operationId: getClass
+      tags: [community]
+      summary: Sınıf topluluğunun ayrıntılarını getir
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Sınıf bilgisi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassDetail"
+        "404":
+          description: Sınıf bulunamadı
+  /classes/{classId}/join:
+    post:
+      operationId: joinClass
+      tags: [community]
+      summary: Sınıfa katılma isteği gönder
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Üyelik isteği durumu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "401":
+          description: Giriş gerekli
+        "404":
+          description: Sınıf bulunamadı
+  /classes/{classId}/members:
+    get:
+      operationId: getClassMembers
+      tags: [community]
+      summary: Sınıf üyelerini getir
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Üye listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+        "403":
+          description: Sınıf üyeliği gerekli
+        "404":
+          description: Sınıf bulunamadı
+  /classes/{classId}/posts:
+    get:
+      operationId: getClassPosts
+      tags: [community]
+      summary: Sınıf akışını getir
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Gönderiler
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+        "403":
+          description: Sınıf üyeliği gerekli
+        "404":
+          description: Sınıf bulunamadı
+    post:
+      operationId: createClassPost
+      tags: [community]
+      summary: Sınıf akışında paylaşım oluştur
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+      responses:
+        "201":
+          description: Oluşturulan gönderi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "401":
+          description: Giriş gerekli
+        "403":
+          description: Sınıf üyeliği gerekli
+  /posts/{postId}/comments:
+    post:
+      operationId: createComment
+      tags: [community]
+      summary: Gönderiye yorum ekle
+      parameters:
+        - in: path
+          name: postId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Oluşturulan yorum
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "403":
+          description: Sınıf üyeliği gerekli
+  /posts/{postId}/reaction:
+    put:
+      operationId: setPostReaction
+      tags: [community]
+      summary: Gönderi beğenisini aç veya kapat
+      parameters:
+        - in: path
+          name: postId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionInput"
+      responses:
+        "200":
+          description: Güncel beğeni durumu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionState"
+        "403":
+          description: Sınıf üyeliği gerekli
+  /me:
+    get:
+      operationId: getMyProfile
+      tags: [profile]
+      summary: Giriş yapan kullanıcının profilini getir
+      responses:
+        "200":
+          description: Profil bilgisi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Giriş gerekli
+    patch:
+      operationId: updateMyProfile
+      tags: [profile]
+      summary: Profil bilgilerini güncelle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Güncel profil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Giriş gerekli
+  /search/users:
+    get:
+      operationId: searchUsers
+      tags: [profile]
+      summary: Keşfedilmeye izin veren kullanıcıları ara
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 2 }
+        - in: query
+          name: classId
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Arama sonuçları; özel profiller gösterilmez
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+        "401":
+          description: Giriş gerekli
 components:
   schemas:
     HealthStatus:
@@ -33,4 +339,144 @@ components:
           type: string
       required:
         - status
+    Institution:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        type: { type: string }
+        campus: { type: ["string", "null"] }
+        classCount: { type: integer }
+      required: [id, name, city, type, classCount]
+    ClassGroup:
+      type: object
+      properties:
+        id: { type: integer }
+        institutionId: { type: integer }
+        institutionName: { type: string }
+        city: { type: string }
+        graduationYear: { type: integer }
+        className: { type: string }
+        memberCount: { type: integer }
+        isMember: { type: boolean }
+      required: [id, institutionId, institutionName, city, graduationYear, className, memberCount, isMember]
+    ClassGroupInput:
+      type: object
+      properties:
+        institutionId: { type: integer }
+        graduationYear: { type: integer, minimum: 1950, maximum: 2100 }
+        className: { type: string, minLength: 1, maxLength: 40 }
+      required: [institutionId, graduationYear, className]
+    ClassDetail:
+      allOf:
+        - $ref: "#/components/schemas/ClassGroup"
+        - type: object
+          properties:
+            description: { type: ["string", "null"] }
+            createdAt: { type: string, format: date-time }
+          required: [createdAt]
+    Membership:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, active]
+      required: [status]
+    UserSummary:
+      type: object
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        bio: { type: ["string", "null"] }
+        city: { type: ["string", "null"] }
+        occupation: { type: ["string", "null"] }
+        classLabel: { type: ["string", "null"] }
+      required: [id, displayName]
+    Profile:
+      type: object
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        bio: { type: ["string", "null"] }
+        city: { type: ["string", "null"] }
+        occupation: { type: ["string", "null"] }
+        discoverable: { type: boolean }
+      required: [id, displayName, discoverable]
+    ProfileUpdate:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        bio: { type: ["string", "null"], maxLength: 300 }
+        city: { type: ["string", "null"], maxLength: 100 }
+        occupation: { type: ["string", "null"], maxLength: 100 }
+        discoverable: { type: boolean }
+    PostInput:
+      type: object
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000 }
+        kind:
+          type: string
+          enum: [not, ani, duyuru]
+      required: [content, kind]
+    CommentInput:
+      type: object
+      properties:
+        content: { type: string, minLength: 1, maxLength: 1000 }
+      required: [content]
+    Comment:
+      type: object
+      properties:
+        id: { type: integer }
+        postId: { type: integer }
+        authorId: { type: string }
+        authorName: { type: string }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, postId, authorId, authorName, content, createdAt]
+    Post:
+      type: object
+      properties:
+        id: { type: integer }
+        classId: { type: integer }
+        authorId: { type: string }
+        authorName: { type: string }
+        content: { type: string }
+        kind: { type: string }
+        createdAt: { type: string, format: date-time }
+        reactionCount: { type: integer }
+        commentCount: { type: integer }
+        reactedByMe: { type: boolean }
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+      required: [id, classId, authorId, authorName, content, kind, createdAt, reactionCount, commentCount, reactedByMe, comments]
+    ReactionInput:
+      type: object
+      properties:
+        liked: { type: boolean }
+      required: [liked]
+    ReactionState:
+      type: object
+      properties:
+        liked: { type: boolean }
+        reactionCount: { type: integer }
+      required: [liked, reactionCount]
+    DashboardResponse:
+      type: object
+      properties:
+        classes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClassGroup"
+        recentPosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        suggestedInstitutions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Institution"
+      required: [classes, recentPosts, suggestedInstitutions]
 
