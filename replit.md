@@ -1,6 +1,6 @@
-# [Project name]
+# Sınıfım
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Sınıfım, eski okul ve kurs arkadaşlarını buluşturan; sınıf toplulukları, profiller ve üyelere özel anı akışları sunan Türkçe bir sosyal arşivdir.
 
 ## Run & Operate
 
@@ -22,15 +22,23 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/sinifim` — React web uygulaması; ana arayüz ve teması `src/App.tsx` ile `src/index.css` içinde.
+- `artifacts/api-server` — Express API ve Clerk oturum doğrulaması.
+- `lib/api-spec/openapi.yaml` — API sözleşmesinin tek kaynağı.
+- `lib/api-client-react` ve `lib/api-zod` — OpenAPI'den üretilen istemci kancaları ve doğrulama şemaları.
+- `lib/db/src/schema/community.ts` — PostgreSQL/Drizzle topluluk şeması.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Kimlik doğrulama Replit tarafından yönetilen Clerk ile yapılır; uygulama profilleri Clerk kullanıcı kimliklerini kullanır.
+- Kurum ve sınıf keşfi herkese açıktır; kişi araması yalnızca bulunabilirliği açan profilleri gösterir.
+- Sınıf gönderileri ve üye listesi sunucu tarafında etkin üyelik olmadan döndürülmez.
+- İlk sürümde sınıfa katılım doğrudandır; üyelik isteği onayı ve davet bağlantıları sonraki aşamaya bırakılmıştır.
+- API tipleri ve Zod doğrulamaları OpenAPI'den üretilir; sözleşme değişikliğinde `pnpm --filter @workspace/api-spec run codegen` çalıştırılmalıdır.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Kullanıcılar kurum ve sınıf arayabilir, sınıf topluluğu oluşturup katılabilir, sınıf akışında not/anı/duyuru paylaşabilir, yorum ve beğeni ekleyebilir, profillerini düzenleyebilir ve kişi aramasında görünürlüklerini seçebilir. Arayüz tamamen Türkçedir; krem, mürekkep ve ölçülü mavi vurgularla dijital yıllık hissi taşır.
 
 ## User preferences
 
@@ -38,7 +46,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Web API çağrıları Clerk'in same-origin oturum çerezini kullanır; web istemcisine bearer token ekleme.
+- Clerk proxy middleware'i JSON body parser'lardan önce bağlanmalıdır.
+- Vite/Tailwind v4 ayarında `optimize: false`, Clerk tema katmanlarının üretimde sırasının bozulmasını önler.
 
 ## Pointers
 

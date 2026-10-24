@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getAuth } from "@clerk/express";
 import {
   and,
   count,
@@ -231,7 +232,7 @@ router.get(
       res.status(400).json({ error: "Kurum numarası geçersiz." });
       return;
     }
-    const userId = (await import("@clerk/express")).getAuth(req).userId;
+    const userId = getAuth(req).userId;
     const rows = await db
       .select({
         id: classGroupsTable.id,
@@ -321,7 +322,7 @@ router.get("/classes/:classId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Sınıf numarası geçersiz." });
     return;
   }
-  const userId = (await import("@clerk/express")).getAuth(req).userId;
+  const userId = getAuth(req).userId ?? undefined;
   const details = await classRecord(parsed.data.classId, userId);
   if (!details) {
     res.status(404).json({ error: "Sınıf bulunamadı." });

@@ -3,7 +3,7 @@ import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/r
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { trTR } from '@clerk/localizations';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
   useCreateClass, useCreateClassPost, useCreateComment, useGetClass,
   useGetClassMembers, useGetClassPosts, useGetDashboard, useGetInstitutionClasses,
@@ -13,7 +13,7 @@ import {
   getGetDashboardQueryKey, getGetInstitutionClassesQueryKey, getGetMyProfileQueryKey,
   getGetInstitutionsQueryKey, getSearchUsersQueryKey,
 } from '@workspace/api-client-react';
-import type { ClassGroupInput, ProfileUpdate } from '@workspace/api-client-react';
+import type { ClassGroupInput, Post, PostInput, ProfileUpdate } from '@workspace/api-client-react';
 import { BookOpen, Check, ChevronRight, CircleUserRound, Clock3, GraduationCap, Heart, Landmark, LockKeyhole, LogOut, MapPin, MessageCircle, Plus, Search, ShieldCheck, Sparkles, Users, Wifi, WifiOff, X } from 'lucide-react';
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation, useParams } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -207,6 +207,7 @@ function kindLabel(kind: string) {
 }
 
 function SearchPage() {
+  const { isSignedIn } = useUser();
   const [institutionTerm, setInstitutionTerm] = useState('');
   const [peopleTerm, setPeopleTerm] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -216,8 +217,8 @@ function SearchPage() {
   const institutions = useGetInstitutions(params, { query: { queryKey: getGetInstitutionsQueryKey(params) } });
   const groups = useGetInstitutionClasses(selectedId ?? 0, { query: { enabled: Boolean(selectedId), queryKey: getGetInstitutionClassesQueryKey(selectedId ?? 0) } });
   const peopleParams = { q: peopleTerm.trim() || '  ' };
-  const users = useSearchUsers(peopleParams, { query: { enabled: peopleTerm.trim().length >= 2, queryKey: getSearchUsersQueryKey(peopleParams) } });
-  return <PageShell portal>
+  const users = useSearchUsers(peopleParams, { query: { enabled: Boolean(isSignedIn) && peopleTerm.trim().length >= 2, queryKey: getSearchUsersQueryKey(peopleParams) } });
+  return <PageShell portal={Boolean(isSignedIn)}>
     <main className="content-width search-page">
       <div className="page-intro fade-up"><span className="eyebrow"><span className="eyebrow-line" /> YENİDEN BULUŞMANIN İLK ADIMI</span><h1>Arşivde <em>ara.</em></h1><p>Okulunu bul, sınıfını seç; aynı dönemi paylaşan insanlara yeniden ulaş.</p></div>
       <div className="search-tabs" role="tablist" aria-label="Arama türü"><button type="button" role="tab" aria-selected={tab === 'schools'} className={tab === 'schools' ? 'selected' : ''} onClick={() => setTab('schools')} data-testid="tab-institutions"><Landmark size={16} /> Okul ve sınıf</button><button type="button" role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'selected' : ''} onClick={() => setTab('people')} data-testid="tab-people"><Users size={16} /> Kişi ara</button></div>
@@ -236,7 +237,7 @@ function SearchPage() {
       </div> : <section className="people-search-panel">
         <div className="search-field people-field"><Search size={17} /><input type="search" value={peopleTerm} onChange={(e) => setPeopleTerm(e.target.value)} placeholder="Bir isim yaz (en az 2 harf)" aria-label="Kişi ara" data-testid="input-people-search" /></div>
         <div className="privacy-callout"><LockKeyhole size={16} /><span>Kişi arama sonuçları yalnızca profilini bulunabilir yapan kişileri gösterir. Sınıf içerikleri üyelik olmadan açılmaz.</span></div>
-        {peopleTerm.trim().length < 2 ? <EmptyBlock title="Tanıdık bir isim yaz" body="En az iki harfle aramaya başlayabilirsin." icon={<CircleUserRound size={20} />} /> : users.isLoading ? <LoadingBlock label="Kişiler aranıyor" /> : users.isError ? <ErrorBlock retry={() => void users.refetch()} /> : users.data?.length ? <div className="people-list">{users.data.map((person) => <article className="person-row" key={person.id} data-testid={`person-${person.id}`}><span className="person-avatar">{person.displayName.slice(0, 1)}</span><div><strong>{person.displayName}</strong><p>{[person.classLabel, person.city, person.occupation].filter(Boolean).join(' · ') || person.bio || 'Sınıfım üyesi'}</p></div><span className="discoverable-tag"><ShieldCheck size={13} /> Bulunabilir</span></article>)}</div> : <EmptyBlock title="Bu isimle eşleşen kimse yok" body="Yazımı kontrol et veya farklı bir adla tekrar dene." icon={<Search size={20} />} />}
+        {!isSignedIn ? <div className="auth-prompt"><EmptyBlock title="Kişi aramak için giriş yap" body="Arama sonuçlarında yalnızca bulunabilirliğe izin veren profiller gösterilir." icon={<CircleUserRound size={20} />} /><Link href="/sign-in" className="button button-outline" data-testid="link-sign-in-to-search">Giriş yap</Link></div> : peopleTerm.trim().length < 2 ? <EmptyBlock title="Tanıdık bir isim yaz" body="En az iki harfle aramaya başlayabilirsin." icon={<CircleUserRound size={20} />} /> : users.isLoading ? <LoadingBlock label="Kişiler aranıyor" /> : users.isError ? <ErrorBlock retry={() => void users.refetch()} /> : users.data?.length ? <div className="people-list">{users.data.map((person) => <article className="person-row" key={person.id} data-testid={`person-${person.id}`}><span className="person-avatar">{person.displayName.slice(0, 1)}</span><div><strong>{person.displayName}</strong><p>{[person.classLabel, person.city, person.occupation].filter(Boolean).join(' · ') || person.bio || 'Sınıfım üyesi'}</p></div><span className="discoverable-tag"><ShieldCheck size={13} /> Bulunabilir</span></article>)}</div> : <EmptyBlock title="Bu isimle eşleşen kimse yok" body="Yazımı kontrol et veya farklı bir adla tekrar dene." icon={<Search size={20} />} />}
       </section>}
     </main>
   </PageShell>;
@@ -267,6 +268,7 @@ function CreateClassForm({ institutionId, onClose }: { institutionId: number; on
 }
 
 function ClassPage() {
+  const { isSignedIn } = useUser();
   const params = useParams<{ classId: string }>();
   const classId = Number(params.classId) || 0;
   const detail = useGetClass(classId, { query: { enabled: Boolean(classId), queryKey: getGetClassQueryKey(classId) } });
@@ -282,19 +284,19 @@ function ClassPage() {
       client.invalidateQueries({ queryKey: getGetDashboardQueryKey() }),
     ]);
   } } });
-  if (detail.isLoading) return <PageShell portal><main className="content-width"><LoadingBlock label="Sınıf kaydı açılıyor" /></main></PageShell>;
-  if (detail.isError || !detail.data) return <PageShell portal><main className="content-width"><ErrorBlock retry={() => void detail.refetch()} /></main></PageShell>;
+  if (detail.isLoading) return <PageShell portal={Boolean(isSignedIn)}><main className="content-width"><LoadingBlock label="Sınıf kaydı açılıyor" /></main></PageShell>;
+  if (detail.isError || !detail.data) return <PageShell portal={Boolean(isSignedIn)}><main className="content-width"><ErrorBlock retry={() => void detail.refetch()} /></main></PageShell>;
   const group = detail.data;
-  return <PageShell portal>
+  return <PageShell portal={Boolean(isSignedIn)}>
     <main className="content-width class-page">
       <div className="breadcrumb"><Link href="/search" data-testid="link-back-search">Arşiv</Link><ChevronRight size={13} /><span>{group.institutionName}</span></div>
       <section className="class-hero">
         <div className="class-hero-top"><span className="archive-code">SINIF DEFTERİ · {group.graduationYear}</span><span className={group.isMember ? 'private-badge member' : 'private-badge'}><LockKeyhole size={13} /> {group.isMember ? 'Üyelere özel alan' : 'Üyelikle açılır'}</span></div>
         <div className="class-title-layout"><div><h1>{group.className}</h1><p className="class-school"><Landmark size={15} /> {group.institutionName} <span>·</span> {group.city}</p></div><div className="class-count"><strong>{group.memberCount}</strong><span>eski sınıf arkadaşı</span></div></div>
         <p className="class-description">{group.description || 'Aynı sınıfı, aynı koridorları paylaşanların buluşma yeri. Yeniden merhaba demek için doğru yerdesin.'}</p>
-        {!group.isMember && <div className="join-strip"><div><ShieldCheck size={17} /><span>Katılma isteğin sınıf üyelerince doğrulanır. Onaylanana kadar sınıf paylaşımları görünmez.</span></div><button className="button button-primary" type="button" disabled={joinClass.isPending} onClick={() => joinClass.mutate({ classId })} data-testid="button-join-class">{joinClass.isPending ? 'İstek gönderiliyor…' : 'Sınıfa katılma isteği gönder'} <ChevronRight size={16} /></button></div>}
+        {!group.isMember && <div className="join-strip"><div><ShieldCheck size={17} /><span>Sınıfa katıldığında akış ve arkadaş listesi açılır. Profilinin aranabilir olması ayrı bir tercihtir.</span></div>{isSignedIn ? <button className="button button-primary" type="button" disabled={joinClass.isPending} onClick={() => joinClass.mutate({ classId })} data-testid="button-join-class">{joinClass.isPending ? 'Katılınıyor…' : 'Sınıfa katıl'} <ChevronRight size={16} /></button> : <Link href="/sign-in" className="button button-primary" data-testid="link-sign-in-to-join">Giriş yapıp katıl <ChevronRight size={16} /></Link>}</div>}
         {joinClass.isError && <p className="form-error" role="alert">İstek gönderilemedi. Biraz sonra tekrar deneyebilirsin.</p>}
-        {joinClass.isSuccess && joinClass.data.status === 'pending' && <div className="pending-note" role="status" data-testid="status-membership-pending"><Clock3 size={15} /> Katılma isteğin iletildi. Üyelik onaylanınca sınıf arşivi açılacak.</div>}
+        {joinClass.isSuccess && joinClass.data.status === 'active' && <div className="pending-note" role="status" data-testid="status-membership-active"><Check size={15} /> Sınıfa katıldın. Sınıf arşivi açılıyor.</div>}
       </section>
       {group.isMember ? <div className="class-content-grid">
         <section className="feed-column"><ClassFeed classId={classId} posts={posts} /></section>
@@ -302,14 +304,19 @@ function ClassPage() {
           {members.isLoading ? <LoadingBlock label="Üyeler getiriliyor" /> : members.isError ? <ErrorBlock retry={() => void members.refetch()} /> : members.data?.length ? <div className="member-list">{members.data.map((person) => <div className="member-item" key={person.id} data-testid={`member-${person.id}`}><span className="member-avatar">{person.displayName.slice(0, 1)}</span><div><strong>{person.displayName}</strong><small>{person.occupation || person.city || person.classLabel || 'Sınıf arkadaşı'}</small></div></div>)}</div> : <EmptyBlock title="Üye listesi boş" body="İlk sınıf arkadaşları burada görünecek." icon={<Users size={20} />} />}
           <div className="member-boundary"><LockKeyhole size={14} /><p>Bu liste yalnızca sınıf üyelerine görünür.</p></div>
         </aside>
-      </div> : <section className="locked-feed"><div className="locked-icon"><LockKeyhole size={22} /></div><span className="section-number">SINIFIN ÖZEL ALANI</span><h2>Anılar burada<br />güvende.</h2><p>Bu sınıfa ait gönderiler ve üye listesi yalnızca üyelik onayından sonra görüntülenebilir.</p><div className="locked-line" /></section>}
+      </div> : <section className="locked-feed"><div className="locked-icon"><LockKeyhole size={22} /></div><span className="section-number">SINIFIN ÖZEL ALANI</span><h2>Anılar burada<br />güvende.</h2><p>Bu sınıfa ait gönderiler ve üye listesi yalnızca sınıf üyelerine görünür.</p><div className="locked-line" /></section>}
     </main>
   </PageShell>;
 }
 
-function ClassFeed({ classId, posts }: { classId: number; posts: ReturnType<typeof useGetClassPosts> }) {
+function ClassFeed({ classId, posts }: { classId: number; posts: UseQueryResult<Post[], Error> }) {
   const [content, setContent] = useState('');
-  const [kind, setKind] = useState('not');
+  const [kind, setKind] = useState<PostInput['kind']>('not');
+  const postKinds: Array<{ key: PostInput['kind']; label: string }> = [
+    { key: 'not', label: 'Not' },
+    { key: 'ani', label: 'Anı' },
+    { key: 'duyuru', label: 'Duyuru' },
+  ];
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const client = useQueryClient();
   const createPost = useCreateClassPost({ mutation: { onSuccess: async () => {
@@ -336,7 +343,7 @@ function ClassFeed({ classId, posts }: { classId: number; posts: ReturnType<type
     <form className="compose-card" onSubmit={submitPost} data-testid="form-create-post">
       <label htmlFor="new-post" className="field-label">Sınıfına bir not bırak</label>
       <textarea id="new-post" rows={3} maxLength={2000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Aklında kalan bir anı, küçük bir haber…" data-testid="input-post-content" />
-      <div className="compose-footer"><div className="kind-select" role="group" aria-label="Gönderi türü">{[['not', 'Not'], ['ani', 'Anı'], ['duyuru', 'Duyuru']].map(([key, label]) => <button type="button" key={key} className={kind === key ? 'active' : ''} onClick={() => setKind(key)} data-testid={`button-post-kind-${key}`}>{label}</button>)}</div><button className="button button-primary button-small" type="submit" disabled={!content.trim() || createPost.isPending} data-testid="button-submit-post">{createPost.isPending ? 'Paylaşılıyor…' : 'Paylaş'} <ChevronRight size={15} /></button></div>
+      <div className="compose-footer"><div className="kind-select" role="group" aria-label="Gönderi türü">{postKinds.map(({ key, label }) => <button type="button" key={key} className={kind === key ? 'active' : ''} onClick={() => setKind(key)} data-testid={`button-post-kind-${key}`}>{label}</button>)}</div><button className="button button-primary button-small" type="submit" disabled={!content.trim() || createPost.isPending} data-testid="button-submit-post">{createPost.isPending ? 'Paylaşılıyor…' : 'Paylaş'} <ChevronRight size={15} /></button></div>
       {createPost.isError && <p className="form-error" role="alert">Notun paylaşılırken bir sorun oldu. Tekrar deneyebilirsin.</p>}
     </form>
     {posts.isLoading ? <LoadingBlock label="Sınıf notları yükleniyor" /> : posts.isError ? <ErrorBlock retry={() => void posts.refetch()} /> : posts.data?.length ? <div className="post-list">{posts.data.map((post) => <article className="post-card" key={post.id} data-testid={`post-card-${post.id}`}><div className="post-topline"><span className={`post-kind kind-${post.kind}`}>{kindLabel(post.kind)}</span><time>{new Date(post.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</time></div><p className="post-content">{post.content}</p><div className="post-author"><span className="person-avatar tiny">{post.authorName.slice(0, 1)}</span><strong>{post.authorName}</strong></div>
@@ -429,8 +436,8 @@ function Router() {
   return <RoutedErrorBoundary><Switch>
     <Route path="/" component={HomeRedirect} />
     <Route path="/portal">{() => <Protected><Portal /></Protected>}</Route>
-    <Route path="/search">{() => <Protected><SearchPage /></Protected>}</Route>
-    <Route path="/classes/:classId">{() => <Protected><ClassPage /></Protected>}</Route>
+    <Route path="/search" component={SearchPage} />
+    <Route path="/classes/:classId" component={ClassPage} />
     <Route path="/profile">{() => <Protected><ProfilePage /></Protected>}</Route>
     <Route path="/sign-in/*?" component={SignInPage} />
     <Route path="/sign-up/*?" component={SignUpPage} />
@@ -448,8 +455,8 @@ function ClerkRoutes() {
     signUpUrl={`${basePath}/sign-up`}
     localization={{
       ...trTR,
-      signIn: { ...trTR.signIn, start: { ...trTR.signIn.start, title: 'Yeniden hoş geldin', subtitle: 'Sınıfım arşivine giriş yap.' } },
-      signUp: { ...trTR.signUp, start: { ...trTR.signUp.start, title: 'Arşive katıl', subtitle: 'Sınıf arkadaşlarınla yeniden buluş.' } },
+      signIn: { ...(trTR.signIn ?? {}), start: { ...(trTR.signIn?.start ?? {}), title: 'Yeniden hoş geldin', subtitle: 'Sınıfım arşivine giriş yap.' } },
+      signUp: { ...(trTR.signUp ?? {}), start: { ...(trTR.signUp?.start ?? {}), title: 'Arşive katıl', subtitle: 'Sınıf arkadaşlarınla yeniden buluş.' } },
     }}
     routerPush={(to) => setLocation(stripBase(to))}
     routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
